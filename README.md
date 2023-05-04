@@ -1,2 +1,2 @@
-# OSS-Python
-Repo for Python scripts
+# OSS-Powershell
+Repo for Powershell scripts
