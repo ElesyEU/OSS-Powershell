@@ -28,3 +28,5 @@ foreach ($item in $recovered)
     $filehash = $item | Get-FileHash -Algorithm MD5
     $item | Rename-Item -NewName ($csvobject | Where-Object { $_.MD5 -eq $filehash.Hash }).Name
 }
+
+Compress-Archive .\recovered -DestinationPath C:\Users\vaags\downloads\fixed
