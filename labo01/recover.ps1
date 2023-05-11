@@ -23,11 +23,8 @@ $csv = Get-Content csvfile.csv
 $csvobject = $csv | ConvertFrom-Csv
 $recovered = Get-ChildItem .\recovered
 
-Write-Host $csvobject | Where-Object { $_.Name, $_.MD5}
-Write-Host $recovered
-
 foreach ($item in $recovered)
 {
-    $filehash = Get-FileHash $item -Algorithm MD5 | Select-Object
-    Write-Host $filehash
+    $filehash = $item | Get-FileHash -Algorithm MD5
+    $item | Rename-Item -NewName ($csvobject | Where-Object { $_.MD5 -eq $filehash.Hash }).Name
 }
