@@ -64,14 +64,14 @@ elseif ($OU_True_groups)
 
 Connect-AzureAD
 
-# Define local variables.
+# Copy all groups that you are member off from Azure AD to the OU 'groups'.
+# Copy all users that are member of those groups from Azure AD to the OU 'users'.
+# Copy all users that are member of those groups to their respective groups in the OU 'groups'.
 
 $User = 's139965@ap.be'
 $User_Id = (Get-AzureADUser -Filter "UserPrincipalName eq '$User'").ObjectId
 $Azure_Groups = Get-AzureADUserMembership -ObjectId $User_Id | Get-AzureADGroup
 $Azure_Group_Pattern = "22-23 *"
-
-# Copy all groups that you are member off from Azure AD to the OU 'groups'.
 
 foreach ($Azure_Group in $Azure_Groups)
 {
@@ -93,25 +93,32 @@ foreach ($Azure_Group in $Azure_Groups)
         # Copy all users in those groups to Active Directory, and put them in the relevant groups.
 
         $Azure_Group_Members = Get-AzureADGroupMember -ObjectId $Azure_Group.ObjectId
+        $AD_Group_Members = Get-ADGroupMember -Identity $AD_Group
+        $AD_User_In_AD_Group = $GroupMembers | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
 
         foreach ($Azure_Group_Member in $Azure_Group_Members)
         {
             $AD_User_Exists = Get-ADUser -Filter "UserPrincipalName -eq `"$($Azure_Group_Member.UserPrincipalName)`""
+            $AD_User_In_AD_Group = $AD_Group | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
 
             if (!$AD_User_Exists -and $Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
             {
                 New-ADUser -Name $Azure_Group_Member.UserPrincipalName -UserPrincipalName $Azure_Group_Member.UserPrincipalName -Path "OU=users,OU=$Student_Number,OU=$OU_Input,$Domain"
                 Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> was created in the OU <users>'" -ForegroundColor Green
             }
-            else
+            elseif ($AD_User_Exists -and $Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
             {
                 Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> already exists in the OU <users>" -ForegroundColor Red
             }
 
-            if ($Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
-            {
+            if (!$AD_User_In_AD_Group -and $Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be')) 
+                {
                 Add-ADGroupMember -Identity $AD_Group -Members $Azure_Group_Member.UserPrincipalName
-                Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> was added to group <$($AD_Group)>" -ForegroundColor Green
+                Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> was added to the group <$AD_Group>" -ForegroundColor Green
+                } 
+            elseif ($AD_User_In_AD_Group -and $Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
+            {
+                Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> is already a member of the group <$AD_Group>" -ForegroundColor Red
             }
         }
     }
