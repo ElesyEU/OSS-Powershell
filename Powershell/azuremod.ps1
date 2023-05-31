@@ -19,11 +19,11 @@ $Domain_Print = (Get-ADDomain).DNSRoot
 if (!$OU_True_Input)
 {
     New-ADOrganizationalUnit -Name $OU_Input -Path "$Domain" -ProtectedFromAccidentalDeletion $false
-    Write-Host "`nThe OU <$OU_Input> was created in the domain <$Domain_Print>`n" -ForegroundColor Green
+    Write-Host "The OU <$OU_Input> was created in the domain <$Domain_Print>" -ForegroundColor Green
 }
 elseif ($OU_True_Input)
 {
-    Write-Host "`nThe OU <$OU_Input> already exists in the domain <$Domain_Print>`n" -ForegroundColor Red
+    Write-Host "The OU <$OU_Input> already exists in the domain <$Domain_Print>" -ForegroundColor Red
 }
 
 # Check if the OU 's139965' already exists in the above OU, if not create it.
@@ -31,11 +31,11 @@ elseif ($OU_True_Input)
 if (!$OU_True_Student_number)
 {
     New-ADOrganizationalUnit -Name $Student_Number -Path "OU=$OU_Input,$Domain" -ProtectedFromAccidentalDeletion $false
-    Write-Host "`nThe OU <$Student_Number> was created in the OU <$OU_Input>`n" -ForegroundColor Green
+    Write-Host "The OU <$Student_Number> was created in the OU <$OU_Input>" -ForegroundColor Green
 }
 elseif ($OU_True_Student_Number)
 {
-    Write-Host "`nThe OU <$Student_Number> already exists in the OU <$OU_Input>`n" -ForegroundColor Red
+    Write-Host "The OU <$Student_Number> already exists in the OU <$OU_Input>" -ForegroundColor Red
 }
 
 # Check if the OU's 'groups' and 'users' already exist in the above OU, if not create them.
@@ -43,21 +43,21 @@ elseif ($OU_True_Student_Number)
 if (!$OU_True_users)
 {
     New-ADOrganizationalUnit -Name 'users' -Path "OU=$Student_Number,OU=$OU_Input,$Domain" -ProtectedFromAccidentalDeletion $false
-    Write-Host "`nThe OU <users> was created in the OU <$Student_Number>`n" -ForegroundColor Green
+    Write-Host "The OU <users> was created in the OU <$Student_Number>" -ForegroundColor Green
 }
 elseif ($OU_True_users)
 {
-    Write-Host "`nThe OU <users> already exists in the OU <$Student_Number>`n" -ForegroundColor Red
+    Write-Host "The OU <users> already exists in the OU <$Student_Number>" -ForegroundColor Red
 }
 
 if (!$OU_True_groups)
 {
     New-ADOrganizationalUnit -Name 'groups' -Path "OU=$Student_Number,OU=$OU_Input,$Domain" -ProtectedFromAccidentalDeletion $false
-    Write-Host "`nThe OU <groups> was created in the OU <$Student_Number>`n" -ForegroundColor Green
+    Write-Host "The OU <groups> was created in the OU <$Student_Number>" -ForegroundColor Green
 }
 elseif ($OU_True_groups)
 {
-    Write-Host "`nThe OU <groups> already exists in the OU <$Student_Number>`n" -ForegroundColor Red
+    Write-Host "The OU <groups> already exists in the OU <$Student_Number>" -ForegroundColor Red
 }
 
 # Connect to AzureAD.
@@ -83,11 +83,33 @@ foreach ($Azure_Group in $Azure_Groups)
         if (!$AD_True_Group)
         {
             New-ADGroup -Name "$AD_Group" -GroupScope Global -Path "OU=groups,OU=$Student_Number,OU=$OU_Input,$Domain"
-            Write-Host "The group '$AD_Group' was created in the OU 'groups" -ForegroundColor Green
+            Write-Host "The group <$AD_Group> was created in the OU <groups>" -ForegroundColor Green
         }
         elseif ($AD_True_Group)
         {
-            Write-Host "The group '$AD_Group' already exists in the OU 'groups': " -ForegroundColor Red
+            Write-Host "The group <$AD_Group> already exists in the OU <groups>" -ForegroundColor Red
+        }
+
+        # Copy all users in those groups to Active Directory, and put them in the relevant groups.
+
+        $Azure_Group_Members = Get-AzureADGroupMember -ObjectId $Azure_Group.ObjectId
+
+        foreach ($Azure_Group_Member in $Azure_Group_Members)
+        {
+            $AD_User = Get-ADUser -Filter "UserPrincipalName -eq `"$($Azure_Group_Member.UserPrincipalName)`""
+
+            if (!$AD_User)
+            {
+                if ($Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
+                    {
+                        New-ADUser -Name $Azure_Group_Member.UserPrincipalName -UserPrincipalName $Azure_Group_Member.UserPrincipalName -Path "OU=users,OU=$Student_Number,OU=$OU_Input,$Domain"
+                        Write-Host "User <`"$($Azure_Group_Member.UserPrincipalName)`"> was created in the OU 'users'" -ForegroundColor Green
+                    }
+            }
+            else
+            {
+                Write-Host "User <$($Azure_Group_Member.UserPrincipalName)> already exists in the OU 'users'" -ForegroundColor Red
+            }
         }
     }
 }
