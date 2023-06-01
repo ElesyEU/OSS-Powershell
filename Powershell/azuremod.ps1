@@ -1,9 +1,24 @@
 Clear-Host
 
 Import-Module AzureAD
-Import-Module ActiveDirectory
 
-# Define global variables.
+# Connect to AzureAD.
+
+Connect-AzureAD
+
+# Copy the groups from Azure of which you are member.
+
+$User = 's139965@ap.be'
+$User_Id = (Get-AzureADUser -Filter "UserPrincipalName eq '$User'").ObjectId
+$Azure_Groups = Get-AzureADUserMembership -ObjectId $User_Id | Get-AzureADGroup
+$Azure_Group_Pattern = "22-23 *"
+
+# Connect to the local Active Directory.
+
+Enter-PSSession -ComputerName localhost
+Import-Module ActiveDirectory -Force
+
+# Define Global variables.
 
 $OU_Input = Read-Host -Prompt (Write-Host "Which OU would you like to create for further use within this script?`n" -ForegroundColor Yellow)
 $OU_True_Input = Get-ADOrganizationalUnit -Filter "Name -eq `"$OU_Input`""
@@ -60,18 +75,9 @@ elseif ($OU_True_groups)
     Write-Host "The OU <groups> already exists in the OU <$Student_Number>" -ForegroundColor Red
 }
 
-# Connect to AzureAD.
-
-Connect-AzureAD
-
 # Copy all groups that you are member off from Azure AD to the OU 'groups'.
 # Copy all users that are member of those groups from Azure AD to the OU 'users'.
 # Copy all users that are member of those groups to their respective groups in the OU 'groups'.
-
-$User = 's139965@ap.be'
-$User_Id = (Get-AzureADUser -Filter "UserPrincipalName eq '$User'").ObjectId
-$Azure_Groups = Get-AzureADUserMembership -ObjectId $User_Id | Get-AzureADGroup
-$Azure_Group_Pattern = "22-23 *"
 
 foreach ($Azure_Group in $Azure_Groups)
 {
@@ -94,12 +100,12 @@ foreach ($Azure_Group in $Azure_Groups)
 
         $Azure_Group_Members = Get-AzureADGroupMember -ObjectId $Azure_Group.ObjectId
         $AD_Group_Members = Get-ADGroupMember -Identity $AD_Group
-        $AD_User_In_AD_Group = $GroupMembers | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
+        $AD_User_In_AD_Group = $AD_Group_Members | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
 
         foreach ($Azure_Group_Member in $Azure_Group_Members)
         {
             $AD_User_Exists = Get-ADUser -Filter "UserPrincipalName -eq `"$($Azure_Group_Member.UserPrincipalName)`""
-            $AD_User_In_AD_Group = $AD_Group | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
+            $AD_User_In_AD_Group = $AD_Group_Members | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
 
             if (!$AD_User_Exists -and $Azure_Group_Member.UserPrincipalName.StartsWith('s') -and $Azure_Group_Member.UserPrincipalName.EndsWith('@ap.be'))
             {
