@@ -1,5 +1,16 @@
 Clear-Host
 
+<#
+Specify a user (for example 's139965@ap.be'), all groups that this user is member off will be copied from AzureAD for further use in the script.
+Specify an OU you wish to create (for example 'OS Scripting 23').
+Create this OU in Active Directory.
+Create an OU in it named 's139965'.
+Create OU's in it named 'users' and 'groups'.
+In 'groups' import the groups that were copied from AzureAD.
+In 'users' import the users that are member of the copied groups.
+Add the users to their respective groups.
+#>
+
 Import-Module AzureAD
 
 # Connect to AzureAD.
@@ -8,10 +19,32 @@ Connect-AzureAD
 
 # Copy the groups from Azure of which you are member.
 
-$User = 's139965@ap.be'
+$User = Read-Host -Prompt (Write-Host "Specify a user (for example 's139965@ap.be'), all groups that this user is member of will be copied from AzureAD for further use in the script." -ForegroundColor Yellow) 
 $User_Id = (Get-AzureADUser -Filter "UserPrincipalName eq '$User'").ObjectId
-$Azure_Groups = Get-AzureADUserMembership -ObjectId $User_Id | Get-AzureADGroup
 $Azure_Group_Pattern = "22-23 *"
+
+$Write_Progress = @{
+    Activity = "Copying Groups from Azure AD"
+    PercentComplete = 0
+}
+
+Write-Progress @Write_Progress
+
+$Azure_Groups = Get-AzureADUserMembership -ObjectId $User_Id | Get-AzureADGroup
+$Azure_Group_Count = $Azure_Groups.Count
+$Copied_Azure_Groups = 0
+
+foreach ($Azure_Group in $Azure_Groups) {
+    $Copied_Azure_Groups++
+    $Write_Progress.PercentComplete = ($Copied_Azure_Groups / $Azure_Group_Count) * 100
+
+    Write-Progress @Write_Progress
+}
+
+$Write_Progress.Activity = "Copying Groups from Azure AD"
+$Write_Progress.PercentComplete = 100
+
+Write-Progress @Write_Progress -Completed
 
 # Connect to the local Active Directory.
 
@@ -20,7 +53,7 @@ Import-Module ActiveDirectory -Force
 
 # Define Global variables.
 
-$OU_Input = Read-Host -Prompt (Write-Host "Which OU would you like to create for further use within this script?`n" -ForegroundColor Yellow)
+$OU_Input = Read-Host -Prompt (Write-Host "Which OU would you like to create for further use within this script?" -ForegroundColor Yellow)
 $OU_True_Input = Get-ADOrganizationalUnit -Filter "Name -eq `"$OU_Input`""
 $OU_True_Student_Number = Get-ADOrganizationalUnit -Filter "Name -eq 's139965'"
 $OU_True_users = Get-ADOrganizationalUnit -Filter "Name -eq 'users'"
@@ -100,7 +133,7 @@ foreach ($Azure_Group in $Azure_Groups)
 
         $Azure_Group_Members = Get-AzureADGroupMember -ObjectId $Azure_Group.ObjectId
         $AD_Group_Members = Get-ADGroupMember -Identity $AD_Group
-        $AD_User_In_AD_Group = $AD_Group_Members | Where-Object {$_.SamAccountName -eq $Azure_Group_Member.UserPrincipalName}
+        $AD_User_In_AD_Group = $AD_Group_Members | Where-Object {$_.UserPrincipalName -eq $Azure_Group_Member.UserPrincipalName}
 
         foreach ($Azure_Group_Member in $Azure_Group_Members)
         {
