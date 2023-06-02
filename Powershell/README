@@ -1,0 +1,21 @@
+Azuremod.ps1 is het originele script dat ik had gemaakt:
+    Alle functionaliteit is aanwezig maar het werkt enkel via localhost en in een interactive PSSession.
+
+Probeersel.ps1 is het definitieve script:
+    Alle functionaliteit is aanwezig maar het werkt enkel via localhost.
+    Hier worden de commando's wel uitgevoerd binnen het script zelf in plaats van een interactive PSSession.
+    Hier zit nog 1 bug in, namelijk bij het toevoegen van users aan groepen, de code is exact hetzelfde als in Azuremod.ps1 en daar werkt het wel..
+        In principe werkt die functionaliteit ook in dit script maar de output geeft weer dat de users worden toegevoegd wanneer ze er al in zitten.
+        De output zou in dat geval moeten zeggen dat ze er al in zitten.
+
+De reden dat het remoten niet gelukt is, is omdat er op mijn eerste server geen RID's meer waren dus die kon ik niet meer gebruiken (op deze server lukte het remoten wel).
+    De Domain Controller was RID-master.
+    Ik heb de RID block size vergroot in de Registry Editor.
+    Ik heb geprobeerd de RID's op te ruimen (dit maakt enkel de webserver kapot).
+    Ik heb forced replication gedaan (vermoedelijk zat het probleem hier ergens).
+    Ik heb de server teruggezet naar een snapshot maar bizar genoeg bleef de RID error.
+    Dit hielp allemaal niets dus heb ik een tweede server geïnstalleerd maar daar kon ik "domainauthenticated" niet veranderen naar "private" door gebrek aan privileges.
+    Wederom geprobeerd dit op te lossen door dingen te veranderen in de Registry Editor, wederom zonder success.
+    Alle Group Policies nagekeken maar ook hier niets gevonden.
+
+    Dit troubleshooten heeft uren in beslag genomen en uiteindelijk was ik het beu, waarvoor excuses.
